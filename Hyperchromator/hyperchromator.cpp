@@ -6,8 +6,10 @@
  * Institution: FH Dortmund
  * Author: Saul García
 */
+
 #include "hyperchromator.h"
 #include <QSerialPort>
+#include <QSerialPortInfo>
 #include <QDebug>
 #include <QByteArray>
 #include <QString>
@@ -20,28 +22,9 @@
 using namespace std;
 
 Hyperchromator::Hyperchromator(){
-    float pos, FWHM;
-    float wl;
+
     read2 = false;
     read_pos = false;
-
-
-    QFile file("wavelength_calib_A.txt");
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)){
-        qDebug() << "Error Opening File. Add it to build folder and to .pro file.";
-        return;
-    }
-
-    QTextStream in(&file);
-    while (!in.atEnd()) {
-       QString line = in.readLine();
-       QTextStream wl_cal_A(&line);
-       wl_cal_A >> wl >> FWHM >> pos;
-       wl_buffer[lines] = wl;
-       pos_buffer[lines] = pos;
-       lines++;
-    }
-
     connect(&serial_port, SIGNAL(readyRead()), this, SLOT(read_serial()));
 }
 
@@ -82,8 +65,17 @@ void Hyperchromator::read_serial(){
     }
 }
 
-void Hyperchromator::open(){
-    serial_port.setPortName("ttyUSB0");
+void Hyperchromator::open(QString cal_path){
+    float pos, FWHM;
+    float wl;
+    QString USB_Port;
+
+    foreach(const QSerialPortInfo &serialPortInfo, QSerialPortInfo::availablePorts()){
+        if((serialPortInfo.vendorIdentifier()==1659) && (serialPortInfo.productIdentifier()==8963)){
+            USB_Port = serialPortInfo.portName();
+        }
+    }
+    serial_port.setPortName(USB_Port);
     serial_port.setBaudRate(QSerialPort::Baud115200);
     serial_port.setDataBits(QSerialPort::Data8);
     serial_port.setParity(QSerialPort::NoParity);
@@ -91,18 +83,39 @@ void Hyperchromator::open(){
     serial_port.setFlowControl(QSerialPort::NoFlowControl);
     bool error_sp = serial_port.open(QIODevice::ReadWrite);
 
+    QFile file(cal_path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)){
+        qDebug() << "Error Opening File.";
+        return;
+    }
+
+    QTextStream in(&file);
+    while (!in.atEnd()) {
+       QString line = in.readLine();
+       QTextStream wl_cal_A(&line);
+       wl_cal_A >> wl >> FWHM >> pos;
+       wl_buffer[lines] = wl;
+       pos_buffer[lines] = pos;
+       lines++;
+    }
+
     if(error_sp == false){ qDebug() << "Error trying to open port"; }
     qDebug() << "Port Opened";
     reset();
     qDebug() << "Homing...";
-    timer.singleShot(15000, this, SLOT(initSpeed()));
+    timer.singleShot(20000, this, SLOT(initSpeed()));
 
 }
 
 void Hyperchromator::initSpeed(){
     qDebug() << "Set Initial Speed";
     setSpeed("250");
-    //setWL("500");
+    timer.singleShot(1000, this, SLOT(initWL()));
+}
+
+void Hyperchromator::initWL(){
+    qDebug() << "Set Initial Wavelength";
+    setWL("500");
 }
 
 void Hyperchromator::close(){

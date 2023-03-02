@@ -11,7 +11,7 @@ class Hyperchromator: public QObject
 
 public:
     Hyperchromator();
-    void open();
+    void open(QString cal_path);
     void close();
     void openShutter();
     void closeShutter();
@@ -36,8 +36,8 @@ private:
     bool read_pos;
     int num_bytes = 0;
     QTimer timer;
-    float wl_buffer[20];
-    float pos_buffer[20];
+    float wl_buffer[100];
+    float pos_buffer[100];
     int lines = 0;
     float wl_input = 0;
 
@@ -48,6 +48,7 @@ private slots:
     void read_serial();
     void updatePos();
     void initSpeed();
+    void initWL();
 
 };
 

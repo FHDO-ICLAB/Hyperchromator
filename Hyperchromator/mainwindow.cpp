@@ -19,7 +19,7 @@ MainWindow::~MainWindow()
 
 
 void MainWindow::on_openBut_clicked(){
-    HC->open();
+    HC->open("/home/saulgr/Desktop/Research/Hyperchromator/Calibration H200016/wavelength_calib_A.txt");
 }
 
 void MainWindow::on_openShutterBut_clicked(){
